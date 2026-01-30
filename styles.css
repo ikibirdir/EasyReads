@@ -1,0 +1,345 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f0f0f;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    background: rgba(18, 18, 18, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    max-width: 800px;
+    width: 100%;
+    overflow: hidden;
+}
+
+header {
+    background: rgba(25, 25, 25, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: white;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    font-weight: 300;
+    letter-spacing: 4px;
+    color: #ffffff;
+}
+
+.tagline {
+    font-size: 1em;
+    opacity: 0.6;
+    letter-spacing: 2px;
+    color: #ffffff;
+    font-weight: 300;
+}
+
+main {
+    padding: 30px;
+}
+
+.input-section {
+    margin-bottom: 30px;
+}
+
+.input-section label {
+    display: block;
+    font-size: 0.95em;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+#textInput {
+    width: 100%;
+    min-height: 150px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 1em;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.3s;
+    background: rgba(25, 25, 25, 0.6);
+    color: #e0e0e0;
+}
+
+#textInput:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.display-section {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.word-display {
+    background: rgba(20, 20, 20, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 60px 15px;
+    margin-bottom: 20px;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+#currentWord {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #e0e0e0;
+    word-wrap: break-word;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Roboto Mono', 'SF Mono', 'Consolas', 'Menlo', monospace;
+    width: 100%;
+}
+
+.word-before {
+    text-align: right;
+    display: inline-block;
+    flex: 1;
+    max-width: 50%;
+    overflow: visible;
+}
+
+.fixation-letter {
+    color: #ff3b3b;
+    display: inline-block;
+    text-align: center;
+    width: 1ch;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.fixation-letter::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 20px;
+    background: rgba(255, 59, 59, 0.5);
+    left: 50%;
+    transform: translateX(-50%);
+    top: -25px;
+}
+
+.fixation-letter::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 20px;
+    background: rgba(255, 59, 59, 0.5);
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -25px;
+}
+
+.word-after {
+    text-align: left;
+    display: inline-block;
+    flex: 1;
+    max-width: 50%;
+    overflow: visible;
+}
+
+.word-part {
+    display: inline-block;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.progress-bar:hover {
+    height: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.word-counter {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9em;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+
+.controls-section {
+    margin-bottom: 20px;
+}
+
+.playback-controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.btn {
+    padding: 12px 28px;
+    font-size: 1em;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary {
+    background: rgba(255, 255, 255, 0.95);
+    color: #0f0f0f;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.speed-control {
+    background: rgba(25, 25, 25, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.speed-control label {
+    display: block;
+    font-size: 0.95em;
+    font-weight: 400;
+    margin-bottom: 15px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 1px;
+}
+
+#speedValue {
+    color: #ffffff;
+    font-size: 1.2em;
+    font-weight: 300;
+}
+
+#speedSlider {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+#speedSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#speedSlider::-webkit-slider-thumb:hover {
+    background: rgba(255, 255, 255, 1);
+}
+
+#speedSlider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#speedSlider::-moz-range-thumb:hover {
+    background: rgba(255, 255, 255, 1);
+}
+
+.speed-markers {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.3);
+    padding: 0 5px;
+}
+
+footer {
+    background: rgba(20, 20, 20, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.85em;
+    font-weight: 300;
+}
+
+@media (max-width: 600px) {
+    header h1 {
+        font-size: 2em;
+    }
+    
+    #currentWord {
+        font-size: 2em;
+    }
+    
+    .playback-controls {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyReads - Speed Reading</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>EasyReads</h1>
+            <p class="tagline">Read faster, comprehend better</p>
+        </header>
+
+        <main>
+            <section class="input-section">
+                <label for="textInput">Paste your text here:</label>
+                <textarea id="textInput" placeholder="Paste or type the text you want to read..."></textarea>
+            </section>
+
+            <section class="display-section">
+                <div class="word-display" id="wordDisplay">
+                    <span id="currentWord">Ready</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="word-counter" id="wordCounter">0 / 0 words</p>
+            </section>
+
+            <section class="controls-section">
+                <div class="playback-controls">
+                    <button id="readBtn" class="btn btn-primary">Read</button>
+                    <button id="pauseBtn" class="btn btn-secondary" disabled>Pause</button>
+                    <button id="resetBtn" class="btn btn-secondary">Reset</button>
+                </div>
+
+                <div class="speed-control">
+                    <label for="speedSlider">
+                        Reading Speed: <span id="speedValue">300</span> WPM
+                    </label>
+                    <input 
+                        type="range" 
+                        id="speedSlider" 
+                        min="100" 
+                        max="800" 
+                        value="300" 
+                        step="10"
+                    >
+                    <div class="speed-markers">
+                        <span>100</span>
+                        <span>300</span>
+                        <span>500</span>
+                        <span>800</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 EasyReads. Speed reading made simple.</p>
+        </footer>
+    </div>
+
+    <!-- Hidden video for camera feed -->
+    <video id="cameraVideo" style="display: none;" autoplay playsinline></video>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="script.js"></script>
+</body>
+</html>

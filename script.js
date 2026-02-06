@@ -11,6 +11,7 @@ const timeRemaining = document.getElementById('timeRemaining');
 const progressFill = document.getElementById('progressFill');
 const progressBar = document.querySelector('.progress-bar');
 const blinkToggle = document.getElementById('blinkToggle');
+const blinkStatus = document.getElementById('blinkStatus');
 
 // State variables
 let words = [];
@@ -29,6 +30,8 @@ let recentEyeDistances = []; // Track last few frames for trend detection
 let lastEyeDistance = 0;
 let blinkDetectionEnabled = false;
 let cameraInitialized = false;
+let blinkCooldownUntil = 0; // Timestamp when cooldown period ends
+let smoothedEyeDistance = 0; // Smoothed measurement for stability
 
 // Initialize
 speedValue.textContent = wordsPerMinute;
@@ -58,6 +61,37 @@ if (savedProgress) {
     } catch (e) {
         console.error('Error loading saved progress:', e);
     }
+}
+
+// Load saved blink detection preference
+const savedBlinkPref = localStorage.getItem('easyreads_blink_enabled');
+if (savedBlinkPref === 'true') {
+    // User had it enabled before - restore the toggle state
+    blinkToggle.checked = true;
+    
+    // Automatically request permission and enable
+    (async () => {
+        blinkToggle.disabled = true;
+        blinkStatus.textContent = '⏳ Requesting camera...';
+        blinkStatus.className = 'blink-status loading';
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            blinkDetectionEnabled = true;
+            cameraInitialized = true;
+            stream.getTracks().forEach(track => track.stop());
+            blinkToggle.disabled = false;
+            blinkStatus.textContent = '✓ Active';
+            blinkStatus.className = 'blink-status active';
+        } catch (error) {
+            console.log('Camera permission not granted on load');
+            blinkToggle.checked = false;
+            blinkToggle.disabled = false;
+            blinkStatus.textContent = '';
+            blinkStatus.className = 'blink-status';
+            localStorage.setItem('easyreads_blink_enabled', 'false');
+        }
+    })();
 }
 
 // Event Listeners
@@ -194,8 +228,10 @@ function formatWordWithFixation(word) {
         fixationIndex = 2; // 3rd letter for 6-7 characters
     } else if (word.length <= 10) {
         fixationIndex = 3; // 4th letter for 8-10 characters
+    } else if (word.length <= 12) {
+        fixationIndex = 4; // 5th letter for 11-12 characters
     } else {
-        fixationIndex = 4; // 5th letter for 11+ characters
+        fixationIndex = 5; // 6th letter for 13+ characters
     }
     
     if (word.length < fixationIndex + 1) {
@@ -217,6 +253,8 @@ async function handleBlinkToggle(event) {
     if (isEnabled) {
         // Disable the toggle and show loading state
         blinkToggle.disabled = true;
+        blinkStatus.textContent = '⏳ Requesting camera...';
+        blinkStatus.className = 'blink-status loading';
         
         try {
             // Request camera permission
@@ -234,8 +272,13 @@ async function handleBlinkToggle(event) {
                 initializeCamera();
             }
             
-            // Re-enable toggle
+            // Re-enable toggle and show success
             blinkToggle.disabled = false;
+            blinkStatus.textContent = '✓ Active';
+            blinkStatus.className = 'blink-status active';
+            
+            // Save preference
+            localStorage.setItem('easyreads_blink_enabled', 'true');
             
         } catch (error) {
             console.error('Camera permission denied:', error);
@@ -245,15 +288,25 @@ async function handleBlinkToggle(event) {
             blinkToggle.checked = false;
             blinkToggle.disabled = false;
             blinkDetectionEnabled = false;
+            blinkStatus.textContent = '';
+            blinkStatus.className = 'blink-status';
+            
+            // Save disabled preference
+            localStorage.setItem('easyreads_blink_enabled', 'false');
         }
     } else {
         // Disable blink detection
         blinkDetectionEnabled = false;
+        blinkStatus.textContent = '';
+        blinkStatus.className = 'blink-status';
         
         // Stop camera if it's running
         if (camera || faceMesh) {
             stopCamera();
         }
+        
+        // Save preference
+        localStorage.setItem('easyreads_blink_enabled', 'false');
     }
 }
 
@@ -281,9 +334,17 @@ function initializeCamera() {
     
     faceMesh.onResults(onFaceMeshResults);
     
+    // Throttle to ~20 FPS for better battery life
+    let lastFrameTime = 0;
+    const targetFrameDelay = 1000 / 20; // ~50ms between frames (20 FPS)
+    
     camera = new Camera(videoElement, {
         onFrame: async () => {
-            await faceMesh.send({ image: videoElement });
+            const now = performance.now();
+            if (now - lastFrameTime >= targetFrameDelay) {
+                await faceMesh.send({ image: videoElement });
+                lastFrameTime = now;
+            }
         },
         width: 320,   // Lower resolution for faster processing
         height: 240
@@ -302,10 +363,11 @@ function stopCamera() {
         faceMesh = null;
     }
     
-    // Reset calibration for next session
+    // Reset calibration and cooldown for next session
     eyeDistanceHistory = [];
     recentEyeDistances = [];
     isCalibrating = true;
+    blinkCooldownUntil = 0;
 }
 
 function onFaceMeshResults(results) {
@@ -314,72 +376,141 @@ function onFaceMeshResults(results) {
         return;
     }
     
+    // Check if we're in cooldown period (2 seconds after a blink)
+    const now = performance.now();
+    if (now < blinkCooldownUntil) {
+        return; // Skip processing during cooldown to save battery
+    }
+    
     if (!results.multiFaceLandmarks || !results.multiFaceLandmarks.length) {
         return;
     }
     
     const landmarks = results.multiFaceLandmarks[0];
     
-    // Eye landmarks for blink detection
-    // Left eye: 159, 145 (top and bottom)
-    // Right eye: 386, 374 (top and bottom)
-    const leftEyeTop = landmarks[159];
-    const leftEyeBottom = landmarks[145];
-    const rightEyeTop = landmarks[386];
-    const rightEyeBottom = landmarks[374];
+    // Enhanced eye landmarks for more accurate blink detection
+    // Left eye: multiple vertical points for better measurement
+    // Top: 159, 158, 157, 173  Bottom: 145, 144, 153, 154
+    // Right eye: Top: 386, 385, 384, 398  Bottom: 374, 373, 380, 381
     
-    // Calculate Eye Aspect Ratio (EAR)
-    const leftEyeDistance = Math.abs(leftEyeTop.y - leftEyeBottom.y);
-    const rightEyeDistance = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+    // Left eye vertical measurements (multiple points)
+    const leftEyeTop1 = landmarks[159];
+    const leftEyeTop2 = landmarks[158];
+    const leftEyeBottom1 = landmarks[145];
+    const leftEyeBottom2 = landmarks[153];
+    
+    // Right eye vertical measurements (multiple points)
+    const rightEyeTop1 = landmarks[386];
+    const rightEyeTop2 = landmarks[385];
+    const rightEyeBottom1 = landmarks[374];
+    const rightEyeBottom2 = landmarks[380];
+    
+    // Calculate Eye Aspect Ratio (EAR) using multiple measurements for accuracy
+    const leftEyeDist1 = Math.abs(leftEyeTop1.y - leftEyeBottom1.y);
+    const leftEyeDist2 = Math.abs(leftEyeTop2.y - leftEyeBottom2.y);
+    const leftEyeDistance = (leftEyeDist1 + leftEyeDist2) / 2;
+    
+    const rightEyeDist1 = Math.abs(rightEyeTop1.y - rightEyeBottom1.y);
+    const rightEyeDist2 = Math.abs(rightEyeTop2.y - rightEyeBottom2.y);
+    const rightEyeDistance = (rightEyeDist1 + rightEyeDist2) / 2;
+    
+    // Use average of both eyes
     const averageEyeDistance = (leftEyeDistance + rightEyeDistance) / 2;
+    
+    // Check if both eyes are closing (more lenient threshold for natural blinks)
+    const bothEyesClosed = (leftEyeDistance < calibratedThreshold * 1.5) && 
+                           (rightEyeDistance < calibratedThreshold * 1.5);
     
     // Adaptive calibration for first 30 frames (~1 second)
     if (isCalibrating && eyeDistanceHistory.length < 30) {
         eyeDistanceHistory.push(averageEyeDistance);
+        smoothedEyeDistance = averageEyeDistance; // Initialize smoothed value
         
         if (eyeDistanceHistory.length === 30) {
             // Calculate average eye opening and set threshold dynamically
             const avgEyeOpening = eyeDistanceHistory.reduce((a, b) => a + b, 0) / 30;
-            calibratedThreshold = avgEyeOpening * 0.5; // Blink threshold is 50% of normal opening
+            calibratedThreshold = avgEyeOpening * 0.6; // Lower threshold for higher sensitivity
             isCalibrating = false;
             console.log(`Blink detection calibrated. Threshold: ${calibratedThreshold.toFixed(4)}`);
+            
+            // Update status to show calibration complete
+            if (blinkStatus) {
+                blinkStatus.textContent = '● Active';
+                blinkStatus.className = 'blink-status calibrated';
+            }
+        } else {
+            // Show calibration progress
+            if (blinkStatus) {
+                blinkStatus.textContent = `⏳ Calibrating... ${eyeDistanceHistory.length}/30`;
+                blinkStatus.className = 'blink-status calibrating';
+            }
         }
         return; // Don't detect blinks during calibration
     }
     
-    // Track recent eye distances for trend detection (keep last 3 frames)
-    recentEyeDistances.push(averageEyeDistance);
-    if (recentEyeDistances.length > 3) {
+    // Apply lighter exponential smoothing to be more responsive (alpha = 0.5 for faster response)
+    smoothedEyeDistance = 0.5 * averageEyeDistance + 0.5 * smoothedEyeDistance;
+    
+    // Track recent eye distances for trend detection (keep last 4 frames for better pattern recognition)
+    recentEyeDistances.push(smoothedEyeDistance);
+    if (recentEyeDistances.length > 4) {
         recentEyeDistances.shift();
     }
     
-    // Use calibrated or default threshold
+    // Use calibrated or default threshold (slightly more sensitive)
     const blinkThreshold = calibratedThreshold;
     
-    // Predictive detection: check if eyes are rapidly closing
+    // Enhanced predictive detection: check if eyes are rapidly closing
     let isRapidlyClosing = false;
-    if (recentEyeDistances.length === 3 && isReading && !isBlinking) {
-        const trend1 = recentEyeDistances[1] - recentEyeDistances[0];
-        const trend2 = recentEyeDistances[2] - recentEyeDistances[1];
+    if (recentEyeDistances.length >= 3 && isReading && !isBlinking) {
+        // Check for downward trend in eye opening
+        let closingTrends = 0;
+        for (let i = 1; i < recentEyeDistances.length; i++) {
+            const trend = recentEyeDistances[i] - recentEyeDistances[i - 1];
+            if (trend < -0.001) { // More sensitive threshold
+                closingTrends++;
+            }
+        }
         
-        // If eyes are closing rapidly (both trends negative and accelerating)
-        if (trend1 < -0.002 && trend2 < -0.002) {
+        // If majority of recent frames show closing trend
+        if (closingTrends >= 2) {
             isRapidlyClosing = true;
         }
     }
     
-    // Trigger blink on: actual threshold OR rapid closing trend
-    if ((averageEyeDistance < blinkThreshold || isRapidlyClosing) && !isBlinking && isReading) {
+    // More sensitive blink detection (use smoothed value for stability)
+    const sensitiveThreshold = blinkThreshold * 1.4; // 40% more sensitive to catch more blinks
+    
+    // Enhanced blink trigger logic:
+    // 1. Both eyes must be closing (prevents winks from triggering)
+    // 2. Either threshold reached OR rapid closing detected
+    // 3. Not already in blink state
+    // 4. Currently reading
+    const thresholdMet = smoothedEyeDistance < sensitiveThreshold;
+    const shouldTriggerBlink = (thresholdMet || isRapidlyClosing) && bothEyesClosed && !isBlinking && isReading;
+    
+    if (shouldTriggerBlink) {
         isBlinking = true;
         onBlinkDetected();
-    } else if (averageEyeDistance >= blinkThreshold && isBlinking) {
+    } else if (smoothedEyeDistance >= blinkThreshold * 1.5 && isBlinking) {
+        // Use higher threshold for blink end detection to avoid re-triggering
         isBlinking = false;
     }
     
-    lastEyeDistance = averageEyeDistance;
+    lastEyeDistance = smoothedEyeDistance;
 }
 
 function onBlinkDetected() {
+    // Set cooldown period - pause detection for 2 seconds to save battery
+    blinkCooldownUntil = performance.now() + 2000; // 2 seconds from now
+    
+    // Visual feedback - flash the word display briefly
+    wordDisplay.style.transition = 'opacity 0.1s';
+    wordDisplay.style.opacity = '0.3';
+    setTimeout(() => {
+        wordDisplay.style.opacity = '1';
+    }, 100);
+    
     // Pause the word display
     if (intervalId) {
         clearInterval(intervalId);
@@ -391,12 +522,16 @@ function onBlinkDetected() {
         clearTimeout(blinkPauseTimeout);
     }
     
-    // Show empty container
-    wordDisplay.innerHTML = '';
+    // Show the last word that was displayed before the blink
+    if (currentIndex > 0) {
+        const lastWord = words[currentIndex - 1];
+        wordDisplay.innerHTML = formatWordWithFixation(lastWord);
+    }
     
     // Resume after 0.5 seconds
     blinkPauseTimeout = setTimeout(() => {
         if (isReading) {
+            displayNextWord();
             startInterval();
         }
     }, 500);

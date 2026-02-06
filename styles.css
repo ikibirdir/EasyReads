@@ -389,6 +389,8 @@ main {
 .blink-toggle-container {
     display: flex;
     justify-content: center;
+    align-items: center;
+    gap: 12px;
     margin-bottom: 12px;
 }
 
@@ -401,6 +403,36 @@ main {
     color: rgba(255, 255, 255, 0.7);
     letter-spacing: 1px;
     cursor: pointer;
+}
+
+.blink-status {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.blink-status.loading {
+    color: rgba(255, 200, 100, 0.9);
+    background: rgba(255, 200, 100, 0.1);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.blink-status.active {
+    color: rgba(100, 255, 150, 0.9);
+    background: rgba(100, 255, 150, 0.1);
+}
+
+.blink-status.calibrating {
+    color: rgba(150, 200, 255, 0.9);
+    background: rgba(150, 200, 255, 0.1);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.blink-status.calibrated {
+    color: rgba(100, 255, 150, 0.9);
+    background: rgba(100, 255, 150, 0.15);
 }
 
 .toggle-switch {

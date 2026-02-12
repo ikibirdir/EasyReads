@@ -1,6 +1,12 @@
 // DOM Elements
+const homepage = document.getElementById('homepage');
+const mainApp = document.getElementById('mainApp');
+const getStartedBtn = document.getElementById('getStartedBtn');
+const howItWorksBtn = document.getElementById('howItWorks');
+const inputSection = document.getElementById('inputSection');
+const toggleInputBtn = document.getElementById('toggleInputBtn');
 const textInput = document.getElementById('textInput');
-const wordDisplay = document.getElementById('currentWord');
+const wordDisplay = document.getElementById('wordContext');
 const readBtn = document.getElementById('readBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const resetBtn = document.getElementById('resetBtn');
@@ -12,6 +18,19 @@ const progressFill = document.getElementById('progressFill');
 const progressBar = document.querySelector('.progress-bar');
 const blinkToggle = document.getElementById('blinkToggle');
 const blinkStatus = document.getElementById('blinkStatus');
+const wordLengthToggle = document.getElementById('wordLengthToggle');
+const punctuationToggle = document.getElementById('punctuationToggle');
+
+// Homepage transition
+getStartedBtn.addEventListener('click', () => {
+    homepage.style.display = 'none';
+    mainApp.style.display = 'block';
+});
+
+howItWorksBtn.addEventListener('click', () => {
+    mainApp.style.display = 'none';
+    homepage.style.display = 'flex';
+});
 
 // State variables
 let words = [];
@@ -32,6 +51,9 @@ let blinkDetectionEnabled = false;
 let cameraInitialized = false;
 let blinkCooldownUntil = 0; // Timestamp when cooldown period ends
 let smoothedEyeDistance = 0; // Smoothed measurement for stability
+let calibrationCheckTimeout = null; // Timeout to check if calibration is stuck
+let variableWordLength = false; // Variable duration based on word length
+let variablePunctuation = false; // Variable duration based on punctuation
 
 // Initialize
 speedValue.textContent = wordsPerMinute;
@@ -55,12 +77,25 @@ if (savedProgress) {
             
             // Show the current word
             if (currentIndex < words.length) {
-                wordDisplay.innerHTML = formatWordWithFixation(words[currentIndex]);
+                displayWordWithContext(currentIndex);
             }
         }
     } catch (e) {
         console.error('Error loading saved progress:', e);
     }
+}
+
+// Load saved toggle preferences
+const savedWordLength = localStorage.getItem('easyreads_word_length');
+if (savedWordLength !== null) {
+    variableWordLength = savedWordLength === 'true';
+    wordLengthToggle.checked = variableWordLength;
+}
+
+const savedPunctuation = localStorage.getItem('easyreads_punctuation');
+if (savedPunctuation !== null) {
+    variablePunctuation = savedPunctuation === 'true';
+    punctuationToggle.checked = variablePunctuation;
 }
 
 // Load saved blink detection preference
@@ -103,9 +138,78 @@ progressBar.addEventListener('click', seekToPosition);
 progressBar.addEventListener('mousedown', startDragging);
 textInput.addEventListener('input', handleTextInput);
 blinkToggle.addEventListener('change', handleBlinkToggle);
+wordLengthToggle.addEventListener('change', (e) => {
+    variableWordLength = e.target.checked;
+    localStorage.setItem('easyreads_word_length', e.target.checked);
+});
+punctuationToggle.addEventListener('change', (e) => {
+    variablePunctuation = e.target.checked;
+    localStorage.setItem('easyreads_punctuation', e.target.checked);
+});
+
+// Toggle text input visibility
+toggleInputBtn.addEventListener('click', () => {
+    inputSection.classList.toggle('collapsed');
+    if (inputSection.classList.contains('collapsed')) {
+        toggleInputBtn.textContent = 'Show ▼';
+    } else {
+        toggleInputBtn.textContent = 'Hide ▲';
+    }
+});
+
+// Keyboard controls
+document.addEventListener('keydown', (event) => {
+    // Space bar to pause/resume
+    if (event.code === 'Space' && event.target !== textInput) {
+        event.preventDefault();
+        if (isReading) {
+            pauseReading();
+        } else if (words.length > 0) {
+            startReading();
+        }
+    }
+});
 
 // Dragging state
 let isDragging = false;
+
+// Mode switching
+function switchMode(mode) {
+    currentMode = mode;
+    
+    // Update tab states
+    modeTabs.forEach(tab => {
+        if (tab.dataset.mode === mode) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Stop any current reading
+    if (isReading) {
+        pauseReading();
+    }
+    
+    // Switch displays
+    if (mode === 'fixation') {
+        wordDisplay.style.display = 'flex';
+        scrollDisplay.style.display = 'none';
+        if (currentIndex < words.length && words.length > 0) {
+            displayWordWithContext(currentIndex);
+        } else {
+            wordDisplay.innerHTML = '<div class="word-context-container">Ready</div>';
+        }
+    } else {
+        wordDisplay.style.display = 'none';
+        scrollDisplay.style.display = 'flex';
+        if (words.length > 0) {
+            scrollDisplay.innerHTML = '<div class="scroll-text">' + words.join(' ') + '</div>';
+        } else {
+            scrollDisplay.innerHTML = 'Ready';
+        }
+    }
+}
 
 // Functions
 function startReading() {
@@ -151,13 +255,57 @@ function startReading() {
     pauseBtn.disabled = false;
     textInput.disabled = true;
     
-    displayNextWord();
-    startInterval();
-    
-    // Only initialize camera if blink detection is enabled
+    // Reset calibration BEFORE starting reading
     if (blinkDetectionEnabled && cameraInitialized) {
-        initializeCamera();
-    }
+            eyeDistanceHistory = [];
+            recentEyeDistances = [];
+            isCalibrating = true;
+            blinkCooldownUntil = 0;
+            smoothedEyeDistance = 0;
+            lastEyeDistance = 0;
+            isBlinking = false; // Reset blink state
+            
+            if (blinkPauseTimeout) {
+                clearTimeout(blinkPauseTimeout);
+                blinkPauseTimeout = null;
+            }
+            
+            // Clear any existing calibration check timeout
+            if (calibrationCheckTimeout) {
+                clearTimeout(calibrationCheckTimeout);
+                calibrationCheckTimeout = null;
+            }
+            
+            // Update status to show recalibration
+            if (blinkStatus) {
+                blinkStatus.textContent = '⏳ Calibrating... 0/30';
+                blinkStatus.className = 'blink-status calibrating';
+            }
+            
+            console.log('Calibration reset at', Date.now(), '- isCalibrating:', isCalibrating);
+            
+            // Always restart camera to ensure fresh calibration
+            stopCamera();
+            setTimeout(() => {
+                initializeCamera();
+                console.log('Camera reinitialized');
+                
+                // Check calibration progress after 2 seconds
+                calibrationCheckTimeout = setTimeout(() => {
+                    if (isCalibrating && eyeDistanceHistory.length === 0) {
+                        console.log('Calibration stuck at 0 - restarting camera');
+                        stopCamera();
+                        setTimeout(() => {
+                            initializeCamera();
+                            console.log('Camera restarted due to stuck calibration');
+                        }, 50);
+                    }
+                }, 2000);
+            }, 50);
+        }
+        
+        displayNextWord();
+        startInterval();
 }
 
 function pauseReading() {
@@ -167,8 +315,14 @@ function pauseReading() {
     textInput.disabled = false;
     
     if (intervalId) {
-        clearInterval(intervalId);
+        clearTimeout(intervalId);
         intervalId = null;
+    }
+    
+    // Clear calibration check timeout
+    if (calibrationCheckTimeout) {
+        clearTimeout(calibrationCheckTimeout);
+        calibrationCheckTimeout = null;
     }
     
     // Save current progress
@@ -192,8 +346,7 @@ function resetReading() {
 
 function displayNextWord() {
     if (currentIndex < words.length) {
-        const word = words[currentIndex];
-        wordDisplay.innerHTML = formatWordWithFixation(word);
+        displayWordWithContext(currentIndex);
         currentIndex++;
         updateProgress();
         
@@ -244,6 +397,96 @@ function formatWordWithFixation(word) {
     const after = word.substring(fixationIndex + 1);
     
     return `<span class="word-before">${before}</span><span class="fixation-letter">${fixation}</span><span class="word-after">${after}</span>`;
+}
+
+function displayWordWithContext(index) {
+    if (index >= words.length) {
+        return;
+    }
+    
+    const currentWord = words[index];
+    
+    // Get as many words as possible before and after (up to 50 each)
+    const contextBefore = [];
+    const contextAfter = [];
+    
+    for (let i = 1; i <= 50; i++) {
+        const beforeIndex = index - i;
+        if (beforeIndex >= 0) {
+            contextBefore.unshift(words[beforeIndex]);
+        }
+    }
+    
+    for (let i = 1; i <= 50; i++) {
+        const afterIndex = index + i;
+        if (afterIndex < words.length) {
+            contextAfter.push(words[afterIndex]);
+        }
+    }
+    
+    // Format current word with fixation
+    const formattedCurrentWord = formatWordWithFixation(currentWord);
+    
+    // Build the HTML with horizontal layout
+    let html = '<div class="word-context-container-horizontal">';
+    
+    // Words before (dimmed) - on the left
+    if (contextBefore.length > 0) {
+        html += '<span class="context-words context-horizontal-before">' + contextBefore.join(' ') + '</span>';
+        html += '<span class="word-spacer"> </span>';
+    }
+    
+    // Current word with fixation (highlighted)
+    html += '<span class="current-word-inline">' + formattedCurrentWord + '</span>';
+    
+    // Words after (dimmed) - on the right
+    if (contextAfter.length > 0) {
+        html += '<span class="word-spacer"> </span>';
+        html += '<span class="context-words context-horizontal-after">' + contextAfter.join(' ') + '</span>';
+    }
+    
+    html += '</div>';
+    
+    wordDisplay.innerHTML = html;
+    
+    // Center the fixation letter after rendering
+    requestAnimationFrame(() => {
+        centerFixationLetter();
+        setTimeout(centerFixationLetter, 10);
+    });
+}
+
+function centerFixationLetter() {
+    const fixationLetter = document.querySelector('.fixation-letter');
+    const container = document.querySelector('.word-context-container-horizontal');
+    const displayBox = document.querySelector('.word-display');
+    
+    if (!fixationLetter || !container || !displayBox) {
+        return;
+    }
+    
+    // Reset position first
+    container.style.left = '0';
+    container.style.transform = 'translateY(-50%)';
+    
+    // Force reflow
+    container.offsetHeight;
+    
+    // Get positions
+    const displayRect = displayBox.getBoundingClientRect();
+    const fixationRect = fixationLetter.getBoundingClientRect();
+    
+    // Calculate center of display
+    const displayCenterX = displayRect.left + displayRect.width / 2;
+    
+    // Calculate current position of fixation letter center
+    const fixationCenterX = fixationRect.left + fixationRect.width / 2;
+    
+    // Calculate offset needed
+    const offset = displayCenterX - fixationCenterX;
+    
+    // Apply the offset to the container
+    container.style.left = `${offset}px`;
 }
 
 // Blink Detection Toggle Handler
@@ -317,6 +560,15 @@ function initializeCamera() {
         return;
     }
     
+    // Only reset calibration if this is a fresh initialization (not a restart)
+    if (!camera && !faceMesh) {
+        eyeDistanceHistory = [];
+        recentEyeDistances = [];
+        isCalibrating = true;
+        blinkCooldownUntil = 0;
+        smoothedEyeDistance = 0;
+    }
+    
     const videoElement = document.getElementById('cameraVideo');
     
     faceMesh = new FaceMesh({
@@ -376,17 +628,18 @@ function onFaceMeshResults(results) {
         return;
     }
     
-    // Check if we're in cooldown period (2 seconds after a blink)
-    const now = performance.now();
-    if (now < blinkCooldownUntil) {
-        return; // Skip processing during cooldown to save battery
-    }
-    
     if (!results.multiFaceLandmarks || !results.multiFaceLandmarks.length) {
         return;
     }
     
     const landmarks = results.multiFaceLandmarks[0];
+    
+    // Check if we're in cooldown period (2 seconds after a blink)
+    // BUT allow processing during calibration regardless of cooldown
+    const now = performance.now();
+    if (!isCalibrating && now < blinkCooldownUntil) {
+        return; // Skip processing during cooldown to save battery (but not during calibration)
+    }
     
     // Enhanced eye landmarks for more accurate blink detection
     // Left eye: multiple vertical points for better measurement
@@ -432,6 +685,12 @@ function onFaceMeshResults(results) {
             calibratedThreshold = avgEyeOpening * 0.6; // Lower threshold for higher sensitivity
             isCalibrating = false;
             console.log(`Blink detection calibrated. Threshold: ${calibratedThreshold.toFixed(4)}`);
+            
+            // Clear the calibration check timeout since calibration succeeded
+            if (calibrationCheckTimeout) {
+                clearTimeout(calibrationCheckTimeout);
+                calibrationCheckTimeout = null;
+            }
             
             // Update status to show calibration complete
             if (blinkStatus) {
@@ -524,8 +783,7 @@ function onBlinkDetected() {
     
     // Show the last word that was displayed before the blink
     if (currentIndex > 0) {
-        const lastWord = words[currentIndex - 1];
-        wordDisplay.innerHTML = formatWordWithFixation(lastWord);
+        displayWordWithContext(currentIndex - 1);
     }
     
     // Resume after 0.5 seconds
@@ -540,16 +798,59 @@ function onBlinkDetected() {
 function startInterval() {
     if (intervalId) {
         clearInterval(intervalId);
+        intervalId = null;
     }
     
-    // Calculate delay in milliseconds
-    const delay = (60 / wordsPerMinute) * 1000;
+    scheduleNextWord();
+}
+
+function scheduleNextWord() {
+    if (!isReading || currentIndex >= words.length) {
+        return;
+    }
     
-    intervalId = setInterval(() => {
-        if (isReading && currentIndex < words.length) {
-            displayNextWord();
+    // Calculate base delay for average word length
+    const baseDelay = (60 / wordsPerMinute) * 1000;
+    
+    // Get current word length
+    const currentWord = words[currentIndex];
+    const wordLength = currentWord ? currentWord.length : 5;
+    
+    let finalDelay = baseDelay;
+    
+    // Apply word length variation if enabled
+    if (variableWordLength) {
+        // Average word length in English is about 5 characters
+        // Adjust timing: shorter words = less time, longer words = more time
+        const averageWordLength = 5;
+        const lengthRatio = wordLength / averageWordLength;
+        
+        // Apply smoothing: 0.5 * baseDelay + 0.5 * adjusted delay
+        // This keeps 50% of original speed, varies 50% based on word length
+        const adjustedDelay = baseDelay * lengthRatio;
+        finalDelay = baseDelay * 0.5 + adjustedDelay * 0.5;
+    }
+    
+    // Apply punctuation pauses if enabled
+    if (variablePunctuation) {
+        // Check for pause punctuation (commas, dashes, etc.)
+        const hasPausePunctuation = /[,;:\-–—]$/.test(currentWord);
+        if (hasPausePunctuation) {
+            finalDelay *= 1.5; // 1.5x time for pause punctuation
         }
-    }, delay);
+        
+        // Check if word ends with sentence-ending punctuation
+        const endsWithPunctuation = /[.!?]$/.test(currentWord);
+        if (endsWithPunctuation) {
+            finalDelay *= 2; // Double the time for end of sentence
+        }
+    }
+    
+    displayNextWord();
+    
+    intervalId = setTimeout(() => {
+        scheduleNextWord();
+    }, finalDelay);
 }
 
 function updateSpeed(event) {
@@ -561,9 +862,18 @@ function updateSpeed(event) {
         updateTimeRemaining();
     }
     
-    // If currently reading, restart interval with new speed
+    // If currently reading, restart with new speed
     if (isReading) {
-        startInterval();
+        if (currentMode === 'fixation') {
+            startInterval();
+        } else {
+            // Restart scrolling with new speed
+            if (scrollAnimationId) {
+                clearTimeout(scrollAnimationId);
+                scrollAnimationId = null;
+            }
+            continueScrolling();
+        }
     }
 }
 
@@ -624,7 +934,7 @@ function seekToPosition(event) {
     } else {
         // Just update the display
         if (currentIndex < words.length) {
-            wordDisplay.innerHTML = formatWordWithFixation(words[currentIndex]);
+            displayWordWithContext(currentIndex);
         }
     }
     
@@ -673,7 +983,7 @@ function updateDragPosition(event) {
     
     // Update display
     if (currentIndex < words.length) {
-        wordDisplay.innerHTML = formatWordWithFixation(words[currentIndex]);
+        displayWordWithContext(currentIndex);
     }
     
     updateProgress();
@@ -762,3 +1072,88 @@ function updateWordCountPreview() {
 
 // Initialize progress
 updateProgress();
+
+// Scroll Mode Functions
+function startScrolling() {
+    if (words.length === 0) return;
+    
+    currentIndex = 0;
+    displayScrollWords();
+}
+
+function displayScrollWords() {
+    if (!isReading || currentIndex >= words.length) {
+        if (currentIndex >= words.length) {
+            pauseReading();
+            scrollDisplay.innerHTML = 'Finished!';
+            setTimeout(() => {
+                scrollDisplay.innerHTML = 'Ready';
+                currentIndex = 0;
+                updateProgress();
+            }, 2000);
+        }
+        return;
+    }
+    
+    const displayWidth = scrollDisplay.getBoundingClientRect().width;
+    
+    // Build words from some starting point to currentIndex (the newest word)
+    // The newest word (at currentIndex) should be right-aligned
+    let startIndex = currentIndex;
+    let visibleWords = [words[currentIndex]];
+    
+    // Add words going backwards until we run out of space
+    for (let i = currentIndex - 1; i >= 0; i--) {
+        const testWords = words.slice(i, currentIndex + 1);
+        const testHTML = testWords.join(' ');
+        
+        // Create temporary element to measure
+        scrollDisplay.innerHTML = '<div class="scroll-text">' + testHTML + '</div>';
+        const textWidth = scrollDisplay.querySelector('.scroll-text').getBoundingClientRect().width;
+        
+        if (textWidth > displayWidth) {
+            // This word doesn't fit, stop here
+            break;
+        }
+        
+        startIndex = i;
+        visibleWords = testWords;
+    }
+    
+    // Display with the newest word highlighted and others dimmed
+    let html = '<div class="scroll-text">';
+    for (let i = 0; i < visibleWords.length; i++) {
+        if (i === visibleWords.length - 1) {
+            // Newest word - bright
+            html += '<span class="scroll-word-new">' + visibleWords[i] + '</span>';
+        } else {
+            // Older words - dimmed
+            html += '<span class="scroll-word-old">' + visibleWords[i] + '</span>';
+            if (i < visibleWords.length - 1) {
+                html += ' ';
+            }
+        }
+    }
+    html += '</div>';
+    
+    scrollDisplay.innerHTML = html;
+    
+    updateProgress();
+    
+    // Schedule next word
+    const delay = (60 / wordsPerMinute) * 1000;
+    
+    scrollAnimationId = setTimeout(() => {
+        currentIndex++;
+        displayScrollWords();
+    }, delay);
+}
+
+function continueScrolling() {
+    // This function is called when speed changes
+    if (scrollAnimationId) {
+        clearTimeout(scrollAnimationId);
+        scrollAnimationId = null;
+    }
+    displayScrollWords();
+}

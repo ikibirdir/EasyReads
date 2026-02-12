@@ -10,21 +10,80 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <!-- Homepage -->
+    <div class="homepage" id="homepage">
+        <div class="homepage-container">
+            <div class="homepage-header">
+                <h1 class="homepage-title">EasyReads</h1>
+                <p class="homepage-subtitle">Speed reading reimagined</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 3v18M3 12h18"/>
+                        </svg>
+                    </div>
+                    <h3>Fixation Point</h3>
+                    <p>Words flow around a fixed highlight point, eliminating eye movement and maximizing reading speed.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 5v.01M12 19v.01M5 12h.01M19 12h.01"/>
+                        </svg>
+                    </div>
+                    <h3>Blink Detection</h3>
+                    <p>Automatically pauses when you blink, giving your eyes micro-breaks and preventing missed words.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                    </div>
+                    <h3>Smart Controls</h3>
+                    <p>Spacebar to pause/resume, adjustable speed from 100-600 WPM, and automatic progress saving.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
+                    <h3>Context Preview</h3>
+                    <p>See words before and after the current word for better comprehension and flow.</p>
+                </div>
+            </div>
+
+            <button class="get-started-btn" id="getStartedBtn">Get Started</button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="container" id="mainApp" style="display: none;">
         <header>
             <h1>EasyReads</h1>
-            <p class="tagline">Read faster, comprehend better</p>
+            <button id="howItWorks" class="how-it-works-btn">How it works</button>
         </header>
 
         <main>
-            <section class="input-section">
-                <label for="textInput">Paste your text here:</label>
+            <section class="input-section" id="inputSection">
+                <div class="input-header">
+                    <label for="textInput">Full text <button id="toggleInputBtn" class="toggle-input-btn">Hide ▲</button></label>
+                </div>
                 <textarea id="textInput" placeholder="Paste or type the text you want to read..."></textarea>
             </section>
 
             <section class="display-section">
                 <div class="word-display" id="wordDisplay">
-                    <span id="currentWord">Ready</span>
+                    <div id="wordContext" class="fixation-display">Ready</div>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
@@ -62,20 +121,52 @@
                     </div>
                 </div>
 
-                <div class="blink-detection-control">
-                    <div class="blink-toggle-container">
-                        <label for="blinkToggle" class="blink-label">
-                            <span>Blink Detection</span>
-                            <div class="toggle-switch">
-                                <input type="checkbox" id="blinkToggle" class="toggle-input">
-                                <span class="toggle-slider"></span>
-                            </div>
-                        </label>
-                        <span class="blink-status" id="blinkStatus"></span>
+                <div class="toggles-container">
+                    <div class="blink-detection-control">
+                        <div class="blink-toggle-container">
+                            <label for="blinkToggle" class="blink-label">
+                                <span>Blink Detection</span>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="blinkToggle" class="toggle-input">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </label>
+                            <span class="blink-status" id="blinkStatus"></span>
+                        </div>
+                        <p class="blink-description">
+                            When enabled, the reader pauses briefly when you blink, giving your eyes a micro-break and preventing missed words.
+                        </p>
                     </div>
-                    <p class="blink-description">
-                        When enabled, the reader pauses briefly when you blink, giving your eyes a micro-break and preventing missed words.
-                    </p>
+
+                    <div class="timing-controls">
+                        <div class="timing-toggle-container">
+                            <label for="wordLengthToggle" class="timing-label">
+                                <span>Variable Speed by Word Length</span>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="wordLengthToggle" class="toggle-input">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+                        <p class="timing-description">
+                            Adjusts display time based on word length - longer words get more time.
+                        </p>
+                    </div>
+
+                    <div class="timing-controls">
+                        <div class="timing-toggle-container">
+                            <label for="punctuationToggle" class="timing-label">
+                                <span>Pause on Punctuation</span>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="punctuationToggle" class="toggle-input">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+                        <p class="timing-description">
+                            Adds natural pauses at commas (1.5x) and sentence endings (2x).
+                        </p>
+                    </div>
                 </div>
             </section>
         </main>

@@ -62,26 +62,30 @@
                 </div>
             </div>
 
-            <button class="get-started-btn" id="getStartedBtn">Get Started</button>
+            <button class="get-started-btn" id="getStartedBtn">Start Reading</button>
         </div>
     </div>
 
     <!-- Main App -->
     <div class="container" id="mainApp" style="display: none;">
         <header>
-            <h1>EasyReads</h1>
-            <button id="howItWorks" class="how-it-works-btn">How it works</button>
+            <h1 id="siteTitle">EasyReads</h1>
         </header>
 
         <main>
             <section class="input-section" id="inputSection">
                 <div class="input-header">
-                    <label for="textInput">Full text <button id="toggleInputBtn" class="toggle-input-btn">Hide ▲</button></label>
+                    <button id="toggleInputBtn" class="toggle-input-btn">Hide full text ▲</button>
                 </div>
                 <textarea id="textInput" placeholder="Paste or type the text you want to read..."></textarea>
             </section>
 
             <section class="display-section">
+                <div class="text-size-controls">
+                    <button id="decreaseSizeBtn" class="size-btn">−</button>
+                    <span class="size-label">Text size</span>
+                    <button id="increaseSizeBtn" class="size-btn">+</button>
+                </div>
                 <div class="word-display" id="wordDisplay">
                     <div id="wordContext" class="fixation-display">Ready</div>
                 </div>

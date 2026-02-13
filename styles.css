@@ -77,24 +77,22 @@ header {
     top: 50%;
     right: 30px;
     transform: translateY(-50%);
-    padding: 6px 16px;
-    background: transparent;
-    border: 2px solid rgba(255, 59, 59, 0.5);
-    color: #ff3b3b;
-    border-radius: 50px;
-    font-size: 0.8em;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    font-size: 1em;
     font-weight: 500;
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s;
     text-transform: none;
 }
 
 .how-it-works-btn:hover {
-    border-color: #ff3b3b;
-    background: rgba(255, 59, 59, 0.1);
-    transform: translateY(-50%) translateY(-2px);
-    box-shadow: 0 5px 20px rgba(255, 59, 59, 0.2);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-50%) translateY(-1px);
 }
 
 header h1 {
@@ -104,6 +102,12 @@ header h1 {
     letter-spacing: 6px;
     color: #ffffff;
     text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+header h1:hover {
+    opacity: 0.8;
 }
 
 .tagline {
@@ -129,7 +133,7 @@ main {
 
 .input-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 12px;
 }
@@ -143,22 +147,11 @@ main {
     font-size: 0.85em;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-left: 10px;
 }
 
 .toggle-input-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.8);
-}
-
-.input-section label {
-    display: flex;
-    align-items: center;
-    font-size: 0.95em;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
-    letter-spacing: 1px;
-    text-transform: uppercase;
 }
 
 #textInput {
@@ -177,12 +170,51 @@ main {
 
 #textInput:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(100, 255, 150, 0.6);
+    padding: 14px;
 }
 
 .display-section {
     margin-bottom: 30px;
     text-align: center;
+    position: relative;
+}
+
+.text-size-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+}
+
+.size-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 1.2em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.size-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.size-label {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.5px;
 }
 
 .mode-tabs {
@@ -811,7 +843,172 @@ footer {
         width: 100%;
     }
 }
+/* How it Works Page Styles */
+#howItWorksPage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
 
+.info-container {
+  max-width: 900px;
+  width: 100%;
+  background: linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(25, 25, 25, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 50px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  margin-bottom: 30px;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 1);
+  transform: translateX(-3px);
+}
+
+.info-title {
+  font-size: 3em;
+  margin-bottom: 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.info-content {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.8;
+}
+
+.info-section {
+  margin-bottom: 50px;
+}
+
+.info-section h2 {
+  font-size: 2em;
+  margin-bottom: 20px;
+  color: rgba(255, 59, 59, 0.9);
+  border-bottom: 2px solid rgba(255, 59, 59, 0.3);
+  padding-bottom: 10px;
+}
+
+.info-section h3 {
+  font-size: 1.3em;
+  margin: 20px 0 10px 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.info-section p {
+  margin-bottom: 15px;
+  font-size: 1.05em;
+}
+
+.info-section ul,
+.info-section ol {
+  margin-left: 25px;
+  margin-bottom: 15px;
+}
+
+.info-section li {
+  margin-bottom: 10px;
+  font-size: 1.05em;
+}
+
+.info-section strong {
+  color: rgba(255, 59, 59, 0.9);
+  font-weight: 600;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.benefit-card {
+  background: rgba(255, 59, 59, 0.08);
+  padding: 25px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 59, 59, 0.2);
+  transition: all 0.3s ease;
+}
+
+.benefit-card:hover {
+  background: rgba(255, 59, 59, 0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 20px rgba(255, 59, 59, 0.2);
+}
+
+.benefit-card h3 {
+  font-size: 1.2em;
+  margin-bottom: 12px;
+}
+
+.benefit-card p {
+  font-size: 0.95em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.faq-item {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  border-left: 3px solid rgba(255, 59, 59, 0.5);
+}
+
+.faq-item h3 {
+  margin-top: 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.faq-item p {
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+#startReadingBtn {
+  margin-top: 40px;
+  width: 100%;
+  max-width: 300px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .info-container {
+    padding: 30px 25px;
+  }
+  
+  .info-title {
+    font-size: 2em;
+  }
+  
+  .info-section h2 {
+    font-size: 1.5em;
+  }
+  
+  .benefits-grid {
+    grid-template-columns: 1fr;
+  }
+}
 /* Homepage Styles */
 .homepage {
     min-height: 100vh;
@@ -908,7 +1105,7 @@ footer {
     background: linear-gradient(135deg, #ff3b3b 0%, #cc2f2f 100%);
     color: white;
     border: none;
-    border-radius: 50px;
+    border-radius: 8px;
     font-size: 1.1em;
     font-weight: 500;
     letter-spacing: 2px;

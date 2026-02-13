@@ -2,7 +2,7 @@
 const homepage = document.getElementById('homepage');
 const mainApp = document.getElementById('mainApp');
 const getStartedBtn = document.getElementById('getStartedBtn');
-const howItWorksBtn = document.getElementById('howItWorks');
+const siteTitle = document.getElementById('siteTitle');
 const inputSection = document.getElementById('inputSection');
 const toggleInputBtn = document.getElementById('toggleInputBtn');
 const textInput = document.getElementById('textInput');
@@ -20,17 +20,29 @@ const blinkToggle = document.getElementById('blinkToggle');
 const blinkStatus = document.getElementById('blinkStatus');
 const wordLengthToggle = document.getElementById('wordLengthToggle');
 const punctuationToggle = document.getElementById('punctuationToggle');
+const increaseSizeBtn = document.getElementById('increaseSizeBtn');
+const decreaseSizeBtn = document.getElementById('decreaseSizeBtn');
 
 // Homepage transition
 getStartedBtn.addEventListener('click', () => {
     homepage.style.display = 'none';
     mainApp.style.display = 'block';
+    
+    // Auto-focus textarea if it's empty
+    if (!textInput.value.trim()) {
+        setTimeout(() => textInput.focus(), 100);
+    }
 });
 
-howItWorksBtn.addEventListener('click', () => {
+siteTitle.addEventListener('click', () => {
     mainApp.style.display = 'none';
     homepage.style.display = 'flex';
 });
+
+// Auto-focus textarea on initial load if empty and main app is visible
+if (mainApp.style.display !== 'none' && !textInput.value.trim()) {
+    setTimeout(() => textInput.focus(), 100);
+}
 
 // State variables
 let words = [];
@@ -54,6 +66,26 @@ let smoothedEyeDistance = 0; // Smoothed measurement for stability
 let calibrationCheckTimeout = null; // Timeout to check if calibration is stuck
 let variableWordLength = false; // Variable duration based on word length
 let variablePunctuation = false; // Variable duration based on punctuation
+let textSizeMultiplier = 1; // Text size multiplier (1 = 100%)
+
+// Function to update text size
+function updateTextSize() {
+    wordDisplay.style.fontSize = (2.5 * textSizeMultiplier) + 'em';
+}
+
+// Load saved reading speed from localStorage
+const savedSpeed = localStorage.getItem('easyreads_speed');
+if (savedSpeed !== null) {
+    wordsPerMinute = parseInt(savedSpeed);
+    speedSlider.value = wordsPerMinute;
+}
+
+// Load saved text size from localStorage
+const savedTextSize = localStorage.getItem('easyreads_textsize');
+if (savedTextSize !== null) {
+    textSizeMultiplier = parseFloat(savedTextSize);
+    updateTextSize();
+}
 
 // Initialize
 speedValue.textContent = wordsPerMinute;
@@ -151,11 +183,28 @@ punctuationToggle.addEventListener('change', (e) => {
 toggleInputBtn.addEventListener('click', () => {
     inputSection.classList.toggle('collapsed');
     if (inputSection.classList.contains('collapsed')) {
-        toggleInputBtn.textContent = 'Show ▼';
+        toggleInputBtn.textContent = 'Show full text ▼';
     } else {
-        toggleInputBtn.textContent = 'Hide ▲';
+        toggleInputBtn.textContent = 'Hide full text ▲';
     }
 });
+
+// Text size controls
+increaseSizeBtn.addEventListener('click', () => {
+    textSizeMultiplier = Math.min(textSizeMultiplier + 0.1, 2); // Max 200%
+    updateTextSize();
+    localStorage.setItem('easyreads_textsize', textSizeMultiplier);
+});
+
+decreaseSizeBtn.addEventListener('click', () => {
+    textSizeMultiplier = Math.max(textSizeMultiplier - 0.1, 0.5); // Min 50%
+    updateTextSize();
+    localStorage.setItem('easyreads_textsize', textSizeMultiplier);
+});
+
+function updateTextSize() {
+    wordDisplay.style.fontSize = (2.5 * textSizeMultiplier) + 'em';
+}
 
 // Keyboard controls
 document.addEventListener('keydown', (event) => {
@@ -856,6 +905,9 @@ function scheduleNextWord() {
 function updateSpeed(event) {
     wordsPerMinute = parseInt(event.target.value);
     speedValue.textContent = wordsPerMinute;
+    
+    // Save to localStorage
+    localStorage.setItem('easyreads_speed', wordsPerMinute);
     
     // Update time remaining with new speed
     if (words.length > 0) {

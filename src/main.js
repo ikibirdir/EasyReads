@@ -202,10 +202,6 @@ decreaseSizeBtn.addEventListener('click', () => {
     localStorage.setItem('easyreads_textsize', textSizeMultiplier);
 });
 
-function updateTextSize() {
-    wordDisplay.style.fontSize = (2.5 * textSizeMultiplier) + 'em';
-}
-
 // Keyboard controls
 document.addEventListener('keydown', (event) => {
     // Space bar to pause/resume
@@ -221,44 +217,7 @@ document.addEventListener('keydown', (event) => {
 
 // Dragging state
 let isDragging = false;
-
-// Mode switching
-function switchMode(mode) {
-    currentMode = mode;
-    
-    // Update tab states
-    modeTabs.forEach(tab => {
-        if (tab.dataset.mode === mode) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
-    });
-    
-    // Stop any current reading
-    if (isReading) {
-        pauseReading();
-    }
-    
-    // Switch displays
-    if (mode === 'fixation') {
-        wordDisplay.style.display = 'flex';
-        scrollDisplay.style.display = 'none';
-        if (currentIndex < words.length && words.length > 0) {
-            displayWordWithContext(currentIndex);
-        } else {
-            wordDisplay.innerHTML = '<div class="word-context-container">Ready</div>';
-        }
-    } else {
-        wordDisplay.style.display = 'none';
-        scrollDisplay.style.display = 'flex';
-        if (words.length > 0) {
-            scrollDisplay.innerHTML = '<div class="scroll-text">' + words.join(' ') + '</div>';
-        } else {
-            scrollDisplay.innerHTML = 'Ready';
-        }
-    }
-}
+let dragMouseUpHandler = null;
 
 // Functions
 function startReading() {
@@ -416,10 +375,20 @@ function displayNextWord() {
     }
 }
 
+// Escape user text before inserting it as HTML, so pasted "<", ">" or "&" display literally
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function formatWordWithFixation(word) {
     // Handle single-letter words - display in red at fixation point
     if (word.length === 1) {
-        return `<span class="word-before"></span><span class="fixation-letter">${word}</span><span class="word-after"></span>`;
+        return `<span class="word-before"></span><span class="fixation-letter">${escapeHtml(word)}</span><span class="word-after"></span>`;
     }
     
     // Determine the fixation point (index of letter to highlight)
@@ -438,12 +407,12 @@ function formatWordWithFixation(word) {
     
     if (word.length < fixationIndex + 1) {
         // Word is too short for the fixation index, just return it as is
-        return `<span class="word-part">${word}</span>`;
+        return `<span class="word-part">${escapeHtml(word)}</span>`;
     }
-    
-    const before = word.substring(0, fixationIndex);
-    const fixation = word[fixationIndex];
-    const after = word.substring(fixationIndex + 1);
+
+    const before = escapeHtml(word.substring(0, fixationIndex));
+    const fixation = escapeHtml(word[fixationIndex]);
+    const after = escapeHtml(word.substring(fixationIndex + 1));
     
     return `<span class="word-before">${before}</span><span class="fixation-letter">${fixation}</span><span class="word-after">${after}</span>`;
 }
@@ -481,7 +450,7 @@ function displayWordWithContext(index) {
     
     // Words before (dimmed) - on the left
     if (contextBefore.length > 0) {
-        html += '<span class="context-words context-horizontal-before">' + contextBefore.join(' ') + '</span>';
+        html += '<span class="context-words context-horizontal-before">' + escapeHtml(contextBefore.join(' ')) + '</span>';
         html += '<span class="word-spacer"> </span>';
     }
     
@@ -491,7 +460,7 @@ function displayWordWithContext(index) {
     // Words after (dimmed) - on the right
     if (contextAfter.length > 0) {
         html += '<span class="word-spacer"> </span>';
-        html += '<span class="context-words context-horizontal-after">' + contextAfter.join(' ') + '</span>';
+        html += '<span class="context-words context-horizontal-after">' + escapeHtml(contextAfter.join(' ')) + '</span>';
     }
     
     html += '</div>';
@@ -603,6 +572,9 @@ async function handleBlinkToggle(event) {
 }
 
 // Camera and Blink Detection
+// Must match the face_mesh version loaded in index.html
+const MEDIAPIPE_FACE_MESH_VERSION = '0.4.1633559619';
+
 function initializeCamera() {
     if (typeof FaceMesh === 'undefined') {
         console.error('MediaPipe Face Mesh not loaded');
@@ -622,7 +594,7 @@ function initializeCamera() {
     
     faceMesh = new FaceMesh({
         locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@${MEDIAPIPE_FACE_MESH_VERSION}/${file}`;
         }
     });
     
@@ -916,16 +888,7 @@ function updateSpeed(event) {
     
     // If currently reading, restart with new speed
     if (isReading) {
-        if (currentMode === 'fixation') {
-            startInterval();
-        } else {
-            // Restart scrolling with new speed
-            if (scrollAnimationId) {
-                clearTimeout(scrollAnimationId);
-                scrollAnimationId = null;
-            }
-            continueScrolling();
-        }
+        startInterval();
     }
 }
 
@@ -1013,8 +976,9 @@ function startDragging(event) {
     updateDragPosition(event);
     
     // Add global mouse event listeners
+    dragMouseUpHandler = () => stopDragging(wasReading);
     document.addEventListener('mousemove', handleDragging);
-    document.addEventListener('mouseup', () => stopDragging(wasReading));
+    document.addEventListener('mouseup', dragMouseUpHandler);
     
     event.preventDefault();
 }
@@ -1048,7 +1012,8 @@ function stopDragging(wasReading) {
     
     // Remove global event listeners
     document.removeEventListener('mousemove', handleDragging);
-    document.removeEventListener('mouseup', stopDragging);
+    document.removeEventListener('mouseup', dragMouseUpHandler);
+    dragMouseUpHandler = null;
     
     // Resume reading if it was playing before
     if (wasReading) {
@@ -1124,88 +1089,3 @@ function updateWordCountPreview() {
 
 // Initialize progress
 updateProgress();
-
-// Scroll Mode Functions
-function startScrolling() {
-    if (words.length === 0) return;
-    
-    currentIndex = 0;
-    displayScrollWords();
-}
-
-function displayScrollWords() {
-    if (!isReading || currentIndex >= words.length) {
-        if (currentIndex >= words.length) {
-            pauseReading();
-            scrollDisplay.innerHTML = 'Finished!';
-            setTimeout(() => {
-                scrollDisplay.innerHTML = 'Ready';
-                currentIndex = 0;
-                updateProgress();
-            }, 2000);
-        }
-        return;
-    }
-    
-    const displayWidth = scrollDisplay.getBoundingClientRect().width;
-    
-    // Build words from some starting point to currentIndex (the newest word)
-    // The newest word (at currentIndex) should be right-aligned
-    let startIndex = currentIndex;
-    let visibleWords = [words[currentIndex]];
-    
-    // Add words going backwards until we run out of space
-    for (let i = currentIndex - 1; i >= 0; i--) {
-        const testWords = words.slice(i, currentIndex + 1);
-        const testHTML = testWords.join(' ');
-        
-        // Create temporary element to measure
-        scrollDisplay.innerHTML = '<div class="scroll-text">' + testHTML + '</div>';
-        const textWidth = scrollDisplay.querySelector('.scroll-text').getBoundingClientRect().width;
-        
-        if (textWidth > displayWidth) {
-            // This word doesn't fit, stop here
-            break;
-        }
-        
-        startIndex = i;
-        visibleWords = testWords;
-    }
-    
-    // Display with the newest word highlighted and others dimmed
-    let html = '<div class="scroll-text">';
-    for (let i = 0; i < visibleWords.length; i++) {
-        if (i === visibleWords.length - 1) {
-            // Newest word - bright
-            html += '<span class="scroll-word-new">' + visibleWords[i] + '</span>';
-        } else {
-            // Older words - dimmed
-            html += '<span class="scroll-word-old">' + visibleWords[i] + '</span>';
-            if (i < visibleWords.length - 1) {
-                html += ' ';
-            }
-        }
-    }
-    html += '</div>';
-    
-    scrollDisplay.innerHTML = html;
-    
-    updateProgress();
-    
-    // Schedule next word
-    const delay = (60 / wordsPerMinute) * 1000;
-    
-    scrollAnimationId = setTimeout(() => {
-        currentIndex++;
-        displayScrollWords();
-    }, delay);
-}
-
-function continueScrolling() {
-    // This function is called when speed changes
-    if (scrollAnimationId) {
-        clearTimeout(scrollAnimationId);
-        scrollAnimationId = null;
-    }
-    displayScrollWords();
-}
